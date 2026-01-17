@@ -7,7 +7,7 @@ require (
 	github.com/refraction-networking/utls v1.8.2
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5
 	github.com/smartystreets/goconvey v1.6.4
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.11.1
 	github.com/txthinking/socks5 v0.0.0-20251011041537-5c31f201a10e
 	github.com/v2fly/v2ray-core/v4 v4.45.2
 	github.com/xtaci/smux v1.5.50
