@@ -1,4 +1,4 @@
-FROM golang:alpine AS builder
+FROM golang:1.25-alpine AS builder
 WORKDIR /
 ARG REF
 RUN apk add git make &&\
