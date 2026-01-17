@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -155,6 +156,7 @@ func runUDPBlackHoleServer() {
 var wg = sync.WaitGroup{}
 
 func init() {
+	_ = os.Setenv("SHADOWSOCKS_SF_CAPACITY", "-1")
 	wg.Add(5)
 	runHelloHTTPServer()
 
