@@ -3,6 +3,7 @@ module github.com/p4gefau1t/trojan-go
 go 1.25
 
 require (
+	github.com/MatusOllah/slogcolor v1.7.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/refraction-networking/utls v1.8.2
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5
@@ -21,7 +22,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/MatusOllah/slogcolor v1.7.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
