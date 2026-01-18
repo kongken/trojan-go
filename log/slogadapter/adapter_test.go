@@ -3197,44 +3197,51 @@ func TestPerformanceOverheadBounds(t *testing.T) {
 		assert.NoError(t, err, "Concurrent logging should not degrade performance significantly")
 	})
 
-	// Property test: Lazy evaluation should avoid expensive operations
+	// Property test: Lazy evaluation should avoid expensive formatting operations
 	t.Run("lazy_evaluation_avoids_expensive_operations", func(t *testing.T) {
 		property := func(seed int) bool {
 			var buf bytes.Buffer
 			adapter := NewSlogAdapter(&buf, false)
 
-			// Disable INFO level
+			// Disable INFO level - this should avoid internal formatting operations
 			adapter.SetLogLevel(log.ErrorLevel)
 
-			// Create expensive operation that should not be called
-			expensiveCallCount := 0
-			expensiveOperation := func() string {
-				expensiveCallCount++
-				// Simulate expensive operation
-				time.Sleep(1 * time.Millisecond)
-				return fmt.Sprintf("expensive_result_%d", seed%1000)
-			}
+			// Generate test data
+			message := fmt.Sprintf("test_message_%d", seed%1000)
 
-			// This should not call the expensive operation since INFO is disabled
+			// Test that disabled log levels return quickly without expensive formatting
+			// The key insight: while we can't avoid argument evaluation, we can avoid
+			// expensive internal operations like string formatting when logging is disabled
 			start := time.Now()
-			for i := 0; i < 10; i++ {
-				adapter.Info("message", expensiveOperation()) // Should be fast due to lazy evaluation
+			for i := 0; i < 100; i++ {
+				// These calls should return quickly since INFO level is disabled
+				adapter.Info(message, "arg1", "arg2", "arg3")
+				adapter.Infof("formatted message %s %s %s", message, "arg1", "arg2")
 			}
 			duration := time.Since(start)
 
-			// Should complete quickly since expensive operations should be avoided
-			// Allow up to 5ms for 10 calls (much less than 10ms if expensive ops were avoided)
-			if duration > 5*time.Millisecond {
-				return false // Too slow, expensive operations might not be avoided
+			// Should complete very quickly since internal formatting should be avoided
+			// Allow up to 10ms for 100 calls when logging is disabled
+			if duration > 10*time.Millisecond {
+				return false // Too slow, internal operations might not be optimized
 			}
 
-			// The expensive operation should have been called since we're not doing
-			// true lazy evaluation in this simple test, but the overall time should still be reasonable
-			return true
+			// Verify that no output was produced (confirming level filtering works)
+			if buf.Len() > 0 {
+				return false // Should not have produced any output
+			}
+
+			// Now test that enabled levels still work correctly
+			adapter.SetLogLevel(log.AllLevel)
+			buf.Reset()
+			adapter.Info(message)
+
+			// Should produce output when enabled
+			return buf.Len() > 0
 		}
 
 		err := quick.Check(property, &config)
-		assert.NoError(t, err, "Lazy evaluation should avoid expensive operations when possible")
+		assert.NoError(t, err, "Lazy evaluation should avoid expensive internal operations when logging is disabled")
 	})
 
 	// Property test: String formatting should be efficient
