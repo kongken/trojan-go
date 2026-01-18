@@ -3,7 +3,7 @@ FROM golang:1.25 AS builder
 WORKDIR /app
 COPY . .
 
-RUN make &&\
+RUN VERSION="docker-build" COMMIT="unknown" make &&\
     wget https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat -O build/geosite.dat &&\
     wget https://github.com/v2fly/geoip/releases/latest/download/geoip.dat -O build/geoip.dat &&\
     wget https://github.com/v2fly/geoip/releases/latest/download/geoip-only-cn-private.dat -O build/geoip-only-cn-private.dat
