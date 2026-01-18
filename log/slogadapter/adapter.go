@@ -12,6 +12,15 @@ import (
 	"github.com/p4gefau1t/trojan-go/log"
 )
 
+// init registers SlogAdapter as the default logger
+func init() {
+	// Create a default SlogAdapter with colored output for terminals
+	// and text output for non-terminals
+	useColor := isTerminal(os.Stdout)
+	defaultAdapter := NewSlogAdapter(os.Stdout, useColor)
+	log.RegisterLogger(defaultAdapter)
+}
+
 // LogFormat represents the output format for log messages
 type LogFormat int
 
@@ -819,4 +828,11 @@ func Group(key string, attrs ...slog.Attr) slog.Attr {
 		anyAttrs[i] = attr
 	}
 	return slog.Group(key, anyAttrs...)
+}
+
+// isTerminal checks if the given file is a terminal
+func isTerminal(f *os.File) bool {
+	// Simple check for terminal - this could be enhanced with more sophisticated detection
+	// For now, we'll check if it's stdout/stderr and assume it's a terminal
+	return f == os.Stdout || f == os.Stderr
 }
