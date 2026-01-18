@@ -161,11 +161,11 @@ type SlogAdapter struct {
 	format         int32        // atomic access for thread safety (LogFormat)
 	mu             sync.RWMutex // protects handler recreation
 
-	// Performance optimization fields
-	enabledCache sync.Map     // Cache for level enabled checks
-	cacheMu      sync.RWMutex // protects cache clearing operations
-	stringPool   sync.Pool    // Pool for string builders to reduce allocations
-	bufferPool   sync.Pool    // Pool for byte buffers to reduce allocations
+	// Performance optimization fields - use pointers to allow sharing
+	enabledCache *sync.Map     // Cache for level enabled checks
+	cacheMu      *sync.RWMutex // protects cache clearing operations
+	stringPool   *sync.Pool    // Pool for string builders to reduce allocations
+	bufferPool   *sync.Pool    // Pool for byte buffers to reduce allocations
 }
 
 // NewSlogAdapter creates a new SlogAdapter with the specified configuration
@@ -271,13 +271,16 @@ func (s *SlogAdapter) recreateHandler() {
 
 // initializePools initializes the object pools for performance optimization
 func (s *SlogAdapter) initializePools() {
-	s.stringPool = sync.Pool{
+	s.enabledCache = &sync.Map{}
+	s.cacheMu = &sync.RWMutex{}
+
+	s.stringPool = &sync.Pool{
 		New: func() interface{} {
 			return make([]string, 0, 8) // Pre-allocate capacity for 8 strings
 		},
 	}
 
-	s.bufferPool = sync.Pool{
+	s.bufferPool = &sync.Pool{
 		New: func() interface{} {
 			return make([]byte, 0, 256) // Pre-allocate 256 bytes
 		},
@@ -765,6 +768,11 @@ func (s *SlogAdapter) WithAttrs(attrs ...slog.Attr) *SlogAdapter {
 		errorHandler:   s.errorHandler,
 		logLevel:       s.logLevel,
 		format:         s.format,
+		// Share cache and mutex with parent to ensure level changes are respected
+		enabledCache: s.enabledCache,
+		cacheMu:      s.cacheMu,
+		stringPool:   s.stringPool,
+		bufferPool:   s.bufferPool,
 	}
 }
 
@@ -785,6 +793,11 @@ func (s *SlogAdapter) WithGroup(name string) *SlogAdapter {
 		errorHandler:   s.errorHandler,
 		logLevel:       s.logLevel,
 		format:         s.format,
+		// Share cache and mutex with parent to ensure level changes are respected
+		enabledCache: s.enabledCache,
+		cacheMu:      s.cacheMu,
+		stringPool:   s.stringPool,
+		bufferPool:   s.bufferPool,
 	}
 }
 
