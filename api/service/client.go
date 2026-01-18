@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"net"
 
 	"github.com/p4gefau1t/trojan-go/api"
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/statistic"
 	"github.com/p4gefau1t/trojan-go/tunnel/trojan"
 )
@@ -24,7 +24,7 @@ type ClientAPI struct {
 }
 
 func (s *ClientAPI) GetTraffic(ctx context.Context, req *GetTrafficRequest) (*GetTrafficResponse, error) {
-	log.Debug("API: GetTraffic")
+	slog.Debug("api get traffic")
 	if req.User == nil {
 		return nil, common.NewError("User is unspecified")
 	}
@@ -79,7 +79,7 @@ func RunClientAPI(ctx context.Context, auth statistic.Authenticator) error {
 		return common.NewError("client api failed to listen").Base(err)
 	}
 	defer listener.Close()
-	log.Info("client-side api service is listening on", listener.Addr().String())
+	slog.Info("client api listening", "address", listener.Addr().String())
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- server.Serve(listener)
@@ -88,7 +88,7 @@ func RunClientAPI(ctx context.Context, auth statistic.Authenticator) error {
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		log.Debug("closed")
+		slog.Debug("api server closed")
 		return nil
 	}
 }

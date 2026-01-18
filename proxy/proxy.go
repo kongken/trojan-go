@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net"
 	"os"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -52,18 +52,18 @@ func (p *Proxy) relayConnLoop() {
 				if err != nil {
 					select {
 					case <-p.ctx.Done():
-						log.Debug("exiting")
+						slog.Debug("relay loop exiting")
 						return
 					default:
 					}
-					log.Error(common.NewError("failed to accept connection").Base(err))
+					slog.Error("failed to accept connection", "error", err)
 					continue
 				}
 				go func(inbound tunnel.Conn) {
 					defer inbound.Close()
 					outbound, err := p.sink.DialConn(inbound.Metadata().Address, nil)
 					if err != nil {
-						log.Error(common.NewError("proxy failed to dial connection").Base(err))
+						slog.Error("proxy failed to dial connection", "error", err)
 						return
 					}
 					defer outbound.Close()
@@ -77,13 +77,13 @@ func (p *Proxy) relayConnLoop() {
 					select {
 					case err = <-errChan:
 						if err != nil {
-							log.Error(err)
+							slog.Error("connection relay error", "error", err)
 						}
 					case <-p.ctx.Done():
-						log.Debug("shutting down conn relay")
+						slog.Debug("shutting down connection relay")
 						return
 					}
-					log.Debug("conn relay ends")
+					slog.Debug("connection relay ended")
 				}(inbound)
 			}
 		}(source)
@@ -98,18 +98,18 @@ func (p *Proxy) relayPacketLoop() {
 				if err != nil {
 					select {
 					case <-p.ctx.Done():
-						log.Debug("exiting")
+						slog.Debug("relay loop exiting")
 						return
 					default:
 					}
-					log.Error(common.NewError("failed to accept packet").Base(err))
+					slog.Error("failed to accept packet", "error", err)
 					continue
 				}
 				go func(inbound tunnel.PacketConn) {
 					defer inbound.Close()
 					outbound, err := p.sink.DialPacket(nil)
 					if err != nil {
-						log.Error(common.NewError("proxy failed to dial packet").Base(err))
+						slog.Error("proxy failed to dial packet", "error", err)
 						return
 					}
 					defer outbound.Close()
@@ -138,12 +138,12 @@ func (p *Proxy) relayPacketLoop() {
 					select {
 					case err = <-errChan:
 						if err != nil {
-							log.Error(err)
+							slog.Error("packet relay error", "error", err)
 						}
 					case <-p.ctx.Done():
-						log.Debug("shutting down packet relay")
+						slog.Debug("shutting down packet relay")
 					}
-					log.Debug("packet relay ends")
+					slog.Debug("packet relay ended")
 				}(inbound)
 			}
 		}(source)
@@ -187,13 +187,39 @@ func NewProxyFromConfigData(data []byte, isJSON bool) (*Proxy, error) {
 	if !ok {
 		return nil, common.NewError("unknown proxy type: " + cfg.RunType)
 	}
-	log.SetLogLevel(log.LogLevel(cfg.LogLevel))
+
+	output := io.Writer(os.Stdout)
 	if cfg.LogFile != "" {
 		file, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
 			return nil, common.NewError("failed to open log file").Base(err)
 		}
-		log.SetOutput(file)
+		output = file
 	}
+
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level: logLevelFromConfig(cfg.LogLevel),
+	})
+	slog.SetDefault(slog.New(handler))
+
 	return create(ctx)
+}
+
+func logLevelFromConfig(level int) slog.Level {
+	switch level {
+	case 0:
+		return slog.LevelDebug
+	case 1:
+		return slog.LevelInfo
+	case 2:
+		return slog.LevelWarn
+	case 3:
+		return slog.LevelError
+	case 4:
+		return slog.LevelError
+	case 5:
+		return slog.Level(1000)
+	default:
+		return slog.LevelInfo
+	}
 }

@@ -3,6 +3,7 @@ package trojan
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -11,7 +12,6 @@ import (
 	"github.com/p4gefau1t/trojan-go/api"
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/statistic"
 	"github.com/p4gefau1t/trojan-go/statistic/memory"
 	"github.com/p4gefau1t/trojan-go/tunnel"
@@ -91,7 +91,11 @@ func (c *OutboundConn) Read(p []byte) (int, error) {
 }
 
 func (c *OutboundConn) Close() error {
-	log.Info("connection to", c.metadata, "closed", "sent:", common.HumanFriendlyTraffic(atomic.LoadUint64(&c.sent)), "recv:", common.HumanFriendlyTraffic(atomic.LoadUint64(&c.recv)))
+	slog.Info("connection closed",
+		"metadata", c.metadata.String(),
+		"sent", common.HumanFriendlyTraffic(atomic.LoadUint64(&c.sent)),
+		"recv", common.HumanFriendlyTraffic(atomic.LoadUint64(&c.recv)),
+	)
 	return c.Conn.Close()
 }
 
@@ -177,7 +181,7 @@ func NewClient(ctx context.Context, client tunnel.Client) (*Client, error) {
 		return nil, common.NewError("no valid user found")
 	}
 
-	log.Debug("trojan client created")
+	slog.Debug("trojan client created")
 	return &Client{
 		underlay: client,
 		ctx:      ctx,

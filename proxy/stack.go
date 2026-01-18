@@ -2,8 +2,9 @@ package proxy
 
 import (
 	"context"
+	"log/slog"
+	"os"
 
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -22,11 +23,13 @@ func (n *Node) BuildNext(name string) *Node {
 	}
 	t, err := tunnel.GetTunnel(name)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to get tunnel", "tunnel", name, "error", err)
+		os.Exit(1)
 	}
 	s, err := t.NewServer(n.Context, n.Server)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to create server tunnel", "tunnel", name, "error", err)
+		os.Exit(1)
 	}
 	newNode := &Node{
 		Name:    name,
@@ -45,11 +48,13 @@ func (n *Node) LinkNextNode(next *Node) *Node {
 	n.Next[next.Name] = next
 	t, err := tunnel.GetTunnel(next.Name)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to get tunnel", "tunnel", next.Name, "error", err)
+		os.Exit(1)
 	}
 	s, err := t.NewServer(next.Context, n.Server) // context of the child nodes have been initialized
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to create server tunnel", "tunnel", next.Name, "error", err)
+		os.Exit(1)
 	}
 	next.Server = s
 	return next

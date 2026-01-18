@@ -2,12 +2,12 @@ package adapter
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"sync"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 	"github.com/p4gefau1t/trojan-go/tunnel/freedom"
 	"github.com/p4gefau1t/trojan-go/tunnel/http"
@@ -31,7 +31,7 @@ func (s *Server) acceptConnLoop() {
 		if err != nil {
 			select {
 			case <-s.ctx.Done():
-				log.Debug("exiting")
+				slog.Debug("adapter accept loop exiting")
 				return
 			default:
 				continue
@@ -44,19 +44,19 @@ func (s *Server) acceptConnLoop() {
 		rewindConn.Rewind()
 		rewindConn.StopBuffering()
 		if err != nil {
-			log.Error(common.NewError("failed to detect proxy protocol type").Base(err))
+			slog.Error("failed to detect proxy protocol type", "error", err)
 			continue
 		}
 		s.socksLock.RLock()
 		if buf[0] == 5 && s.nextSocks {
 			s.socksLock.RUnlock()
-			log.Debug("socks5 connection")
+			slog.Debug("socks5 connection detected")
 			s.socksConn <- &freedom.Conn{
 				Conn: rewindConn,
 			}
 		} else {
 			s.socksLock.RUnlock()
-			log.Debug("http connection")
+			slog.Debug("http connection detected")
 			s.httpConn <- &freedom.Conn{
 				Conn: rewindConn,
 			}
@@ -123,7 +123,7 @@ func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 		ctx:         ctx,
 		cancel:      cancel,
 	}
-	log.Info("adapter listening on tcp/udp:", addr)
+	slog.Info("adapter listening", "address", addr.String(), "protocols", "tcp/udp")
 	go server.acceptConnLoop()
 	return server, nil
 }

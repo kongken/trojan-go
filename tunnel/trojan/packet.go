@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"io"
 	"io/ioutil"
+	"log/slog"
 	"net"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -47,7 +47,11 @@ func (c *PacketConn) WriteWithMetadata(payload []byte, metadata *tunnel.Metadata
 
 	_, err := c.Conn.Write(w.Bytes())
 
-	log.Debug("udp packet remote", c.RemoteAddr(), "metadata", metadata, "size", length)
+	slog.Debug("udp packet sent",
+		"remote", c.RemoteAddr().String(),
+		"metadata", metadata.String(),
+		"size", length,
+	)
 	return len(payload), err
 }
 
@@ -78,7 +82,11 @@ func (c *PacketConn) ReadWithMetadata(payload []byte) (int, *tunnel.Metadata, er
 		return 0, nil, common.NewError("failed to read payload")
 	}
 
-	log.Debug("udp packet from", c.RemoteAddr(), "metadata", addr.String(), "size", length)
+	slog.Debug("udp packet received",
+		"remote", c.RemoteAddr().String(),
+		"metadata", addr.String(),
+		"size", length,
+	)
 	return length, &tunnel.Metadata{
 		Address: addr,
 	}, nil

@@ -3,6 +3,7 @@ package transport
 import (
 	"bufio"
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -44,14 +44,14 @@ func (s *Server) acceptLoop() {
 			select {
 			case <-s.ctx.Done():
 			default:
-				log.Error(common.NewError("transport accept error").Base(err))
+				slog.Error("transport accept error", "error", err)
 				time.Sleep(time.Millisecond * 100)
 			}
 			return
 		}
 
 		go func(tcpConn net.Conn) {
-			log.Info("tcp connection from", tcpConn.RemoteAddr())
+			slog.Info("tcp connection accepted", "remote", tcpConn.RemoteAddr().String())
 			s.httpLock.RLock()
 			if s.nextHTTP { // plaintext mode enabled
 				s.httpLock.RUnlock()
@@ -71,7 +71,11 @@ func (s *Server) acceptLoop() {
 					}
 				} else {
 					// this is a http request, pass it to websocket protocol layer
-					log.Debug("plaintext http request: ", httpReq)
+					slog.Debug("plaintext http request",
+						"method", httpReq.Method,
+						"host", httpReq.Host,
+						"uri", httpReq.RequestURI,
+					)
 					s.wsChan <- &Conn{
 						Conn: rewindConn,
 					}
@@ -118,7 +122,7 @@ func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 
 	var cmd *exec.Cmd
 	if cfg.TransportPlugin.Enabled {
-		log.Warn("transport server will use plugin and work in plain text mode")
+		slog.Warn("transport server will use plugin; plain text mode")
 		switch cfg.TransportPlugin.Type {
 		case "shadowsocks":
 			trojanHost := "127.0.0.1"
@@ -135,8 +139,8 @@ func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 			cfg.LocalHost = trojanHost
 			cfg.LocalPort = trojanPort
 			listenAddress = tunnel.NewAddressFromHostPort("tcp", cfg.LocalHost, cfg.LocalPort)
-			log.Debug("new listen address", listenAddress)
-			log.Debug("plugin env", cfg.TransportPlugin.Env)
+			slog.Debug("new listen address", "address", listenAddress.String())
+			slog.Debug("plugin env", "env", cfg.TransportPlugin.Env)
 
 			cmd = exec.Command(cfg.TransportPlugin.Command, cfg.TransportPlugin.Arg...)
 			cmd.Env = append(cmd.Env, cfg.TransportPlugin.Env...)

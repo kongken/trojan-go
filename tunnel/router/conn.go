@@ -3,10 +3,10 @@ package router
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -34,7 +34,7 @@ func (c *PacketConn) packetLoop() {
 				case <-c.ctx.Done():
 					return
 				default:
-					log.Error("router packetConn error", err)
+					slog.Error("router packet connection error", "error", err)
 					continue
 				}
 			}
@@ -52,7 +52,7 @@ func (c *PacketConn) packetLoop() {
 			case <-c.ctx.Done():
 				return
 			default:
-				log.Error("router packetConn error", err)
+				slog.Error("router packet connection error", "error", err)
 				continue
 			}
 		}

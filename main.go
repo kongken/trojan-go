@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
+	"log/slog"
+	"os"
 
 	_ "github.com/p4gefau1t/trojan-go/component"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/option"
 )
 
@@ -13,7 +14,8 @@ func main() {
 	for {
 		h, err := option.PopOptionHandler()
 		if err != nil {
-			log.Fatal("invalid options")
+			slog.Error("invalid options", "error", err)
+			os.Exit(1)
 		}
 		err = h.Handle()
 		if err == nil {

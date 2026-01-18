@@ -2,9 +2,9 @@ package simplesocks
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 	"github.com/p4gefau1t/trojan-go/tunnel/trojan"
 )
@@ -60,7 +60,7 @@ func (c *Client) Close() error {
 }
 
 func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
-	log.Debug("simplesocks client created")
+	slog.Debug("simplesocks client created")
 	return &Client{
 		underlay: underlay,
 	}, nil

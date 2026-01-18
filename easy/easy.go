@@ -3,11 +3,12 @@ package easy
 import (
 	"encoding/json"
 	"flag"
+	"log/slog"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/option"
 	"github.com/p4gefau1t/trojan-go/proxy"
 )
@@ -56,29 +57,34 @@ func (o *easy) Handle() error {
 		return common.NewError("empty")
 	}
 	if *o.password == "" {
-		log.Fatal("empty password is not allowed")
+		slog.Error("empty password is not allowed")
+		os.Exit(1)
 	}
-	log.Info("easy mode enabled, trojan-go will NOT use the config file")
+	slog.Info("easy mode enabled; config file not used")
 	if *o.client {
 		if *o.local == "" {
-			log.Warn("client local addr is unspecified, using 127.0.0.1:1080")
+			slog.Warn("client local addr is unspecified", "default", "127.0.0.1:1080")
 			*o.local = "127.0.0.1:1080"
 		}
 		localHost, localPortStr, err := net.SplitHostPort(*o.local)
 		if err != nil {
-			log.Fatal(common.NewError("invalid local addr format:" + *o.local).Base(err))
+			slog.Error("invalid local addr format", "addr", *o.local, "error", err)
+			os.Exit(1)
 		}
 		remoteHost, remotePortStr, err := net.SplitHostPort(*o.remote)
 		if err != nil {
-			log.Fatal(common.NewError("invalid remote addr format:" + *o.remote).Base(err))
+			slog.Error("invalid remote addr format", "addr", *o.remote, "error", err)
+			os.Exit(1)
 		}
 		localPort, err := strconv.Atoi(localPortStr)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("invalid local port", "port", localPortStr, "error", err)
+			os.Exit(1)
 		}
 		remotePort, err := strconv.Atoi(remotePortStr)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("invalid remote port", "port", remotePortStr, "error", err)
+			os.Exit(1)
 		}
 		clientConfig := ClientConfig{
 			RunType:    "client",
@@ -92,39 +98,44 @@ func (o *easy) Handle() error {
 		}
 		clientConfigJSON, err := json.Marshal(&clientConfig)
 		common.Must(err)
-		log.Info("generated config:")
-		log.Info(string(clientConfigJSON))
+		slog.Info("generated config", "config", string(clientConfigJSON))
 		proxy, err := proxy.NewProxyFromConfigData(clientConfigJSON, true)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to build proxy config", "error", err)
+			os.Exit(1)
 		}
 		if err := proxy.Run(); err != nil {
-			log.Fatal(err)
+			slog.Error("proxy run failed", "error", err)
+			os.Exit(1)
 		}
 	} else if *o.server {
 		if *o.remote == "" {
-			log.Warn("server remote addr is unspecified, using 127.0.0.1:80")
+			slog.Warn("server remote addr is unspecified", "default", "127.0.0.1:80")
 			*o.remote = "127.0.0.1:80"
 		}
 		if *o.local == "" {
-			log.Warn("server local addr is unspecified, using 0.0.0.0:443")
+			slog.Warn("server local addr is unspecified", "default", "0.0.0.0:443")
 			*o.local = "0.0.0.0:443"
 		}
 		localHost, localPortStr, err := net.SplitHostPort(*o.local)
 		if err != nil {
-			log.Fatal(common.NewError("invalid local addr format:" + *o.local).Base(err))
+			slog.Error("invalid local addr format", "addr", *o.local, "error", err)
+			os.Exit(1)
 		}
 		remoteHost, remotePortStr, err := net.SplitHostPort(*o.remote)
 		if err != nil {
-			log.Fatal(common.NewError("invalid remote addr format:" + *o.remote).Base(err))
+			slog.Error("invalid remote addr format", "addr", *o.remote, "error", err)
+			os.Exit(1)
 		}
 		localPort, err := strconv.Atoi(localPortStr)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("invalid local port", "port", localPortStr, "error", err)
+			os.Exit(1)
 		}
 		remotePort, err := strconv.Atoi(remotePortStr)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("invalid remote port", "port", remotePortStr, "error", err)
+			os.Exit(1)
 		}
 		serverConfig := ServerConfig{
 			RunType:    "server",
@@ -142,14 +153,15 @@ func (o *easy) Handle() error {
 		}
 		serverConfigJSON, err := json.Marshal(&serverConfig)
 		common.Must(err)
-		log.Info("generated json config:")
-		log.Info(string(serverConfigJSON))
+		slog.Info("generated config", "config", string(serverConfigJSON))
 		proxy, err := proxy.NewProxyFromConfigData(serverConfigJSON, true)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to build proxy config", "error", err)
+			os.Exit(1)
 		}
 		if err := proxy.Run(); err != nil {
-			log.Fatal(err)
+			slog.Error("proxy run failed", "error", err)
+			os.Exit(1)
 		}
 	}
 	return nil

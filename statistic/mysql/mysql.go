@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/statistic"
 	"github.com/p4gefau1t/trojan-go/statistic/memory"
 )
@@ -35,7 +35,7 @@ func (a *Authenticator) updater() {
 
 			s, err := a.db.Exec("UPDATE `users` SET `upload`=`upload`+?, `download`=`download`+? WHERE `password`=?;", recv, sent, hash)
 			if err != nil {
-				log.Error(common.NewError("failed to update data to user table").Base(err))
+				slog.Error("failed to update data to user table", "user", hash, "error", err)
 				continue
 			}
 			if r, err := s.RowsAffected(); err != nil {
@@ -44,12 +44,12 @@ func (a *Authenticator) updater() {
 				}
 			}
 		}
-		log.Info("buffered data has been written into the database")
+		slog.Info("buffered data written into database")
 
 		// update memory
 		rows, err := a.db.Query("SELECT password,quota,download,upload FROM users")
 		if err != nil || rows.Err() != nil {
-			log.Error(common.NewError("failed to pull data from the database").Base(err))
+			slog.Error("failed to pull data from the database", "error", err)
 			time.Sleep(a.updateDuration)
 			continue
 		}
@@ -58,7 +58,7 @@ func (a *Authenticator) updater() {
 			var quota, download, upload int64
 			err := rows.Scan(&hash, &quota, &download, &upload)
 			if err != nil {
-				log.Error(common.NewError("failed to obtain data from the query result").Base(err))
+				slog.Error("failed to scan user row", "error", err)
 				break
 			}
 			if download+upload < quota || quota < 0 {
@@ -71,7 +71,7 @@ func (a *Authenticator) updater() {
 		select {
 		case <-time.After(a.updateDuration):
 		case <-a.ctx.Done():
-			log.Debug("MySQL daemon exiting...")
+			slog.Debug("mysql updater exiting")
 			return
 		}
 	}
@@ -106,7 +106,7 @@ func NewAuthenticator(ctx context.Context) (statistic.Authenticator, error) {
 		Authenticator:  memoryAuth.(*memory.Authenticator),
 	}
 	go a.updater()
-	log.Debug("mysql authenticator created")
+	slog.Debug("mysql authenticator created")
 	return a, nil
 }
 

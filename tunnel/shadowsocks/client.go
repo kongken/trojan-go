@@ -2,12 +2,12 @@ package shadowsocks
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/shadowsocks/go-shadowsocks2/core"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -41,7 +41,7 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 	if err != nil {
 		return nil, common.NewError("invalid shadowsocks cipher").Base(err)
 	}
-	log.Debug("shadowsocks client created")
+	slog.Debug("shadowsocks client created")
 	return &Client{
 		underlay: underlay,
 		Cipher:   cipher,
