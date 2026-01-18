@@ -2,13 +2,14 @@ package dokodemo
 
 import (
 	"context"
+	"log/slog"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -36,11 +37,12 @@ func (s *Server) dispatchLoop() {
 			select {
 			case <-s.ctx.Done():
 			default:
-				log.Fatal(common.NewError("dokodemo failed to read from udp socket").Base(err))
+				slog.Error("dokodemo failed to read from udp socket", "error", err)
+				os.Exit(1)
 			}
 			return
 		}
-		log.Debug("udp packet from", addr)
+		slog.Debug("udp packet received", "from", addr.String())
 		s.mappingLock.Lock()
 		if conn, found := s.mapping[addr.String()]; found {
 			conn.input <- buf[:n]
@@ -70,7 +72,7 @@ func (s *Server) dispatchLoop() {
 					// "Multiple goroutines may invoke methods on a Conn simultaneously."
 					_, err := s.udpListener.WriteTo(payload, conn.src)
 					if err != nil {
-						log.Error(common.NewError("dokodemo udp write error").Base(err))
+						slog.Error("dokodemo udp write error", "error", err)
 						return
 					}
 				case <-s.ctx.Done():
@@ -80,7 +82,7 @@ func (s *Server) dispatchLoop() {
 					delete(s.mapping, conn.src.String())
 					s.mappingLock.Unlock()
 					conn.Close()
-					log.Debug("closing timeout packetConn")
+					slog.Debug("closing timed-out packet connection", "from", conn.src.String())
 					return
 				}
 			}
@@ -91,7 +93,8 @@ func (s *Server) dispatchLoop() {
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	conn, err := s.tcpListener.Accept()
 	if err != nil {
-		log.Fatal(common.NewError("dokodemo failed to accept connection").Base(err))
+		slog.Error("dokodemo failed to accept connection", "error", err)
+		os.Exit(1)
 	}
 	return &Conn{
 		Conn: conn,

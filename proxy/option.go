@@ -5,13 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/constant"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/option"
 )
 
@@ -31,7 +31,8 @@ func detectAndReadConfig(file string) ([]byte, bool, error) {
 	case strings.HasSuffix(file, ".yaml"), strings.HasSuffix(file, ".yml"):
 		isJSON = false
 	default:
-		log.Fatalf("unsupported config format: %s. use .yaml or .json instead.", file)
+		slog.Error("unsupported config format; use .yaml or .json", "path", file)
+		os.Exit(1)
 	}
 
 	data, err := ioutil.ReadFile(file)
@@ -54,12 +55,12 @@ func (o *Option) Handle() error {
 
 	switch *o.path {
 	case "":
-		log.Warn("no specified config file, use default path to detect config file")
+		slog.Warn("no config file specified; using default search paths")
 		for _, file := range defaultConfigPath {
-			log.Warn("try to load config from default path:", file)
+			slog.Warn("try to load config from default path", "path", file)
 			data, isJSON, err = detectAndReadConfig(file)
 			if err != nil {
-				log.Warn(err)
+				slog.Warn("failed to read config", "path", file, "error", err)
 				continue
 			}
 			break
@@ -67,23 +68,27 @@ func (o *Option) Handle() error {
 	default:
 		data, isJSON, err = detectAndReadConfig(*o.path)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to read config", "path", *o.path, "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if data != nil {
-		log.Info("trojan-go", constant.Version, "initializing")
+		slog.Info("trojan-go initializing", "version", constant.Version)
 		proxy, err := NewProxyFromConfigData(data, isJSON)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to build proxy from config", "error", err)
+			os.Exit(1)
 		}
 		err = proxy.Run()
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("proxy run failed", "error", err)
+			os.Exit(1)
 		}
 	}
 
-	log.Fatal("no valid config")
+	slog.Error("no valid config")
+	os.Exit(1)
 	return nil
 }
 
@@ -127,16 +132,19 @@ func (o *StdinOption) Handle() error {
 
 	data, e := ioutil.ReadAll(bufio.NewReader(os.Stdin))
 	if e != nil {
-		log.Fatalf("Failed to read from stdin: %s", e.Error())
+		slog.Error("failed to read from stdin", "error", e)
+		os.Exit(1)
 	}
 
 	proxy, err := NewProxyFromConfigData(data, isJSON)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to build proxy from stdin config", "error", err)
+		os.Exit(1)
 	}
 	err = proxy.Run()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("proxy run failed", "error", err)
+		os.Exit(1)
 	}
 
 	return nil

@@ -2,10 +2,9 @@ package common
 
 import (
 	"io"
+	"log/slog"
 	"net"
 	"sync"
-
-	"github.com/p4gefau1t/trojan-go/log"
 )
 
 type RewindReader struct {
@@ -34,7 +33,10 @@ func (r *RewindReader) Read(p []byte) (int, error) {
 	if r.buffering {
 		r.buf = append(r.buf, p[:n]...)
 		if len(r.buf) > r.bufferSize*2 {
-			log.Debug("read too many bytes!")
+			slog.Debug("read buffer exceeded",
+				"buffer_size", r.bufferSize,
+				"buffer_len", len(r.buf),
+			)
 		}
 	}
 	return n, err

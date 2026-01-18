@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"regexp"
 	"runtime"
@@ -13,7 +14,6 @@ import (
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/common/geodata"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 	"github.com/p4gefau1t/trojan-go/tunnel/freedom"
 	"github.com/p4gefau1t/trojan-go/tunnel/transport"
@@ -39,7 +39,7 @@ func matchDomain(list []*v2router.Domain, target string) bool {
 		case v2router.Domain_Full:
 			domain := d.GetValue()
 			if domain == target {
-				log.Tracef("domain %s hit domain(full) rule: %s", target, domain)
+				slog.Debug("domain rule matched", "target", target, "rule", domain, "type", "full")
 				return true
 			}
 		case v2router.Domain_Domain:
@@ -47,28 +47,28 @@ func matchDomain(list []*v2router.Domain, target string) bool {
 			if strings.HasSuffix(target, domain) {
 				idx := strings.Index(target, domain)
 				if idx == 0 || target[idx-1] == '.' {
-					log.Tracef("domain %s hit domain rule: %s", target, domain)
+					slog.Debug("domain rule matched", "target", target, "rule", domain, "type", "domain")
 					return true
 				}
 			}
 		case v2router.Domain_Plain:
 			// keyword
 			if strings.Contains(target, d.GetValue()) {
-				log.Tracef("domain %s hit keyword rule: %s", target, d.GetValue())
+				slog.Debug("domain rule matched", "target", target, "rule", d.GetValue(), "type", "keyword")
 				return true
 			}
 		case v2router.Domain_Regex:
 			matched, err := regexp.Match(d.GetValue(), []byte(target))
 			if err != nil {
-				log.Error("invalid regex", d.GetValue())
+				slog.Error("invalid regex", "pattern", d.GetValue())
 				return false
 			}
 			if matched {
-				log.Tracef("domain %s hit regex rule: %s", target, d.GetValue())
+				slog.Debug("domain rule matched", "target", target, "rule", d.GetValue(), "type", "regex")
 				return true
 			}
 		default:
-			log.Debug("unknown rule type:", d.GetType().String())
+			slog.Debug("unknown rule type", "type", d.GetType().String())
 		}
 	}
 	return false
@@ -228,7 +228,7 @@ func loadCode(cfg *Config, prefix string) []codeInfo {
 					strategy: Proxy,
 				})
 			} else {
-				log.Warn("invalid empty rule:", s)
+				slog.Warn("invalid empty rule", "rule", s)
 			}
 		}
 	}
@@ -240,7 +240,7 @@ func loadCode(cfg *Config, prefix string) []codeInfo {
 					strategy: Bypass,
 				})
 			} else {
-				log.Warn("invalid empty rule:", s)
+				slog.Warn("invalid empty rule", "rule", s)
 			}
 		}
 	}
@@ -252,7 +252,7 @@ func loadCode(cfg *Config, prefix string) []codeInfo {
 					strategy: Block,
 				})
 			} else {
-				log.Warn("invalid empty rule:", s)
+				slog.Warn("invalid empty rule", "rule", s)
 			}
 		}
 	}
@@ -314,9 +314,9 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		code := c.code
 		cidrs, err := geodataLoader.LoadIP(cfg.Router.GeoIPFilename, code)
 		if err != nil {
-			log.Error(err)
+			slog.Error("failed to load geoip", "code", code, "error", err)
 		} else {
-			log.Infof("geoip:%s loaded", code)
+			slog.Info("geoip loaded", "code", code)
 			client.cidrs[c.strategy] = append(client.cidrs[c.strategy], cidrs...)
 		}
 	}
@@ -333,17 +333,17 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 				code = c.code[:attrIdx]
 				attrWanted = c.code[attrIdx+1:]
 			} else { // "geosite:google@" is invalid
-				log.Warnf("geosite:%s invalid", code)
+				slog.Warn("geosite invalid", "code", code)
 				continue
 			}
 		} else if attrIdx == 0 { // "geosite:@cn" is invalid
-			log.Warnf("geosite:%s invalid", code)
+			slog.Warn("geosite invalid", "code", code)
 			continue
 		}
 
 		domainList, err := geodataLoader.LoadSite(cfg.Router.GeoSiteFilename, code)
 		if err != nil {
-			log.Error(err)
+			slog.Error("failed to load geosite", "code", code, "error", err)
 		} else {
 			found := false
 			if attrWanted != "" {
@@ -360,9 +360,9 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 				found = true
 			}
 			if found {
-				log.Infof("geosite:%s loaded", c.code)
+				slog.Info("geosite loaded", "code", c.code)
 			} else {
-				log.Errorf("geosite:%s not found", c.code)
+				slog.Error("geosite not found", "code", c.code)
 			}
 		}
 	}
@@ -441,14 +441,26 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		})
 	}
 
-	log.Info("router client created")
+	slog.Info("router client created")
 
 	runtime.ReadMemStats(&m4)
 
-	log.Debugf("GeoIP rules -> Alloc: %s; TotalAlloc: %s", common.HumanFriendlyTraffic(m2.Alloc-m1.Alloc), common.HumanFriendlyTraffic(m2.TotalAlloc-m1.TotalAlloc))
-	log.Debugf("GeoSite rules -> Alloc: %s; TotalAlloc: %s", common.HumanFriendlyTraffic(m3.Alloc-m2.Alloc), common.HumanFriendlyTraffic(m3.TotalAlloc-m2.TotalAlloc))
-	log.Debugf("Plaintext rules -> Alloc: %s; TotalAlloc: %s", common.HumanFriendlyTraffic(m4.Alloc-m3.Alloc), common.HumanFriendlyTraffic(m4.TotalAlloc-m3.TotalAlloc))
-	log.Debugf("Total(router) -> Alloc: %s; TotalAlloc: %s", common.HumanFriendlyTraffic(m4.Alloc-m1.Alloc), common.HumanFriendlyTraffic(m4.TotalAlloc-m1.TotalAlloc))
+	slog.Debug("geoip rules memory",
+		"alloc", common.HumanFriendlyTraffic(m2.Alloc-m1.Alloc),
+		"total_alloc", common.HumanFriendlyTraffic(m2.TotalAlloc-m1.TotalAlloc),
+	)
+	slog.Debug("geosite rules memory",
+		"alloc", common.HumanFriendlyTraffic(m3.Alloc-m2.Alloc),
+		"total_alloc", common.HumanFriendlyTraffic(m3.TotalAlloc-m2.TotalAlloc),
+	)
+	slog.Debug("plaintext rules memory",
+		"alloc", common.HumanFriendlyTraffic(m4.Alloc-m3.Alloc),
+		"total_alloc", common.HumanFriendlyTraffic(m4.TotalAlloc-m3.TotalAlloc),
+	)
+	slog.Debug("router memory total",
+		"alloc", common.HumanFriendlyTraffic(m4.Alloc-m1.Alloc),
+		"total_alloc", common.HumanFriendlyTraffic(m4.TotalAlloc-m1.TotalAlloc),
+	)
 
 	return client, nil
 }

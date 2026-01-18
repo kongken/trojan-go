@@ -7,13 +7,13 @@ import (
 	"encoding/pem"
 	"io"
 	"io/ioutil"
+	"log/slog"
 	"strings"
 
 	utls "github.com/refraction-networking/utls"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 	"github.com/p4gefau1t/trojan-go/tunnel/tls/fingerprint"
 	"github.com/p4gefau1t/trojan-go/tunnel/transport"
@@ -99,12 +99,12 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		default:
 			return nil, common.NewError("invalid fingerprint " + cfg.TLS.Fingerprint)
 		}
-		log.Info("tls fingerprint", cfg.TLS.Fingerprint, "applied")
+		slog.Info("tls fingerprint applied", "fingerprint", cfg.TLS.Fingerprint)
 	}
 
 	if cfg.TLS.SNI == "" {
 		cfg.TLS.SNI = cfg.RemoteHost
-		log.Warn("tls sni is unspecified")
+		slog.Warn("tls sni is unspecified", "default", cfg.RemoteHost)
 	}
 
 	client := &Client{
@@ -125,9 +125,9 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		client.ca = x509.NewCertPool()
 		ok := client.ca.AppendCertsFromPEM(caCertByte)
 		if !ok {
-			log.Warn("invalid cert list")
+			slog.Warn("invalid cert list")
 		}
-		log.Info("using custom cert")
+		slog.Info("using custom cert")
 
 		// print cert info
 		pemCerts := caCertByte
@@ -144,14 +144,14 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 			if err != nil {
 				continue
 			}
-			log.Trace("issuer:", cert.Issuer, "subject:", cert.Subject)
+			slog.Debug("cert details", "issuer", cert.Issuer.String(), "subject", cert.Subject.String())
 		}
 	}
 
 	if cfg.TLS.CertPath == "" {
-		log.Info("cert is unspecified, using default ca list")
+		slog.Info("cert is unspecified; using default ca list")
 	}
 
-	log.Debug("tls client created")
+	slog.Debug("tls client created")
 	return client, nil
 }

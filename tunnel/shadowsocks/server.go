@@ -2,13 +2,13 @@ package shadowsocks
 
 import (
 	"context"
+	"log/slog"
 	"net"
 
 	"github.com/shadowsocks/go-shadowsocks2/core"
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/redirector"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
@@ -34,7 +34,7 @@ func (s *Server) AcceptConn(overlay tunnel.Tunnel) (tunnel.Conn, error) {
 	testConn := s.Cipher.StreamConn(rewindConn)
 	if _, err := testConn.Read(buf[:]); err != nil {
 		// we are under attack
-		log.Error(common.NewError("shadowsocks failed to decrypt").Base(err))
+		slog.Error("shadowsocks failed to decrypt", "error", err)
 		rewindConn.Rewind()
 		rewindConn.StopBuffering()
 		s.Redirect(&redirector.Redirection{
@@ -72,7 +72,7 @@ func NewServer(ctx context.Context, underlay tunnel.Server) (*Server, error) {
 	if cfg.RemotePort == 0 {
 		return nil, common.NewError("invalid shadowsocks redirection port")
 	}
-	log.Debug("shadowsocks client created")
+	slog.Debug("shadowsocks server created")
 	return &Server{
 		underlay:   underlay,
 		Cipher:     cipher,

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"io"
 	"io/ioutil"
+	"log/slog"
 	"net"
 
 	"google.golang.org/grpc"
@@ -14,7 +15,6 @@ import (
 	"github.com/p4gefau1t/trojan-go/api"
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/statistic"
 	"github.com/p4gefau1t/trojan-go/tunnel/trojan"
 )
@@ -25,7 +25,7 @@ type ServerAPI struct {
 }
 
 func (s *ServerAPI) GetUsers(stream TrojanServerService_GetUsersServer) error {
-	log.Debug("API: GetUsers")
+	slog.Debug("api get users")
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -80,7 +80,7 @@ func (s *ServerAPI) GetUsers(stream TrojanServerService_GetUsersServer) error {
 }
 
 func (s *ServerAPI) SetUsers(stream TrojanServerService_SetUsersServer) error {
-	log.Debug("API: SetUsers")
+	slog.Debug("api set users")
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -145,7 +145,7 @@ func (s *ServerAPI) SetUsers(stream TrojanServerService_SetUsersServer) error {
 }
 
 func (s *ServerAPI) ListUsers(req *ListUsersRequest, stream TrojanServerService_ListUsersServer) error {
-	log.Debug("API: ListUsers")
+	slog.Debug("api list users")
 	users := s.auth.ListUsers()
 	for _, user := range users {
 		downloadTraffic, uploadTraffic := user.GetTraffic()
@@ -184,7 +184,7 @@ func (s *ServerAPI) ListUsers(req *ListUsersRequest, stream TrojanServerService_
 func newAPIServer(cfg *Config) (*grpc.Server, error) {
 	var server *grpc.Server
 	if cfg.API.SSL.Enabled {
-		log.Info("api tls enabled")
+		slog.Info("api tls enabled")
 		keyPair, err := tls.LoadX509KeyPair(cfg.API.SSL.CertPath, cfg.API.SSL.KeyPath)
 		if err != nil {
 			return nil, common.NewError("failed to load key pair").Base(err)
@@ -196,7 +196,7 @@ func newAPIServer(cfg *Config) (*grpc.Server, error) {
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 			tlsConfig.ClientCAs = x509.NewCertPool()
 			for _, path := range cfg.API.SSL.ClientCertPath {
-				log.Debug("loading client cert: " + path)
+				slog.Debug("loading client cert", "path", path)
 				certBytes, err := ioutil.ReadFile(path)
 				if err != nil {
 					return nil, common.NewError("failed to load cert file").Base(err)
@@ -242,7 +242,7 @@ func RunServerAPI(ctx context.Context, auth statistic.Authenticator) error {
 		return common.NewError("server api failed to listen").Base(err)
 	}
 	defer listener.Close()
-	log.Info("server-side api service is listening on", listener.Addr().String())
+	slog.Info("server api listening", "address", listener.Addr().String())
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- server.Serve(listener)
@@ -251,7 +251,7 @@ func RunServerAPI(ctx context.Context, auth statistic.Authenticator) error {
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		log.Debug("closed")
+		slog.Debug("api server closed")
 		return nil
 	}
 }

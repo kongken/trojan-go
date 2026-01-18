@@ -2,11 +2,11 @@ package mux
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/xtaci/smux"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -22,7 +22,7 @@ func (s *Server) acceptConnWorker() {
 	for {
 		conn, err := s.underlay.AcceptConn(&Tunnel{})
 		if err != nil {
-			log.Debug(err)
+			slog.Debug("mux accept error", "error", err)
 			select {
 			case <-s.ctx.Done():
 				return
@@ -35,7 +35,7 @@ func (s *Server) acceptConnWorker() {
 			// smuxConfig.KeepAliveDisabled = true
 			smuxSession, err := smux.Server(conn, smuxConfig)
 			if err != nil {
-				log.Error(err)
+				slog.Error("mux session error", "error", err)
 				return
 			}
 			go func(session *smux.Session, conn tunnel.Conn) {
@@ -44,7 +44,7 @@ func (s *Server) acceptConnWorker() {
 				for {
 					stream, err := session.AcceptStream()
 					if err != nil {
-						log.Error(err)
+						slog.Error("mux accept stream error", "error", err)
 						return
 					}
 					select {
@@ -53,7 +53,7 @@ func (s *Server) acceptConnWorker() {
 						Conn: conn,
 					}:
 					case <-s.ctx.Done():
-						log.Debug("exiting")
+						slog.Debug("mux server exiting")
 						return
 					}
 				}
@@ -89,6 +89,6 @@ func NewServer(ctx context.Context, underlay tunnel.Server) (*Server, error) {
 		connChan: make(chan tunnel.Conn, 32),
 	}
 	go server.acceptConnWorker()
-	log.Debug("mux server created")
+	slog.Debug("mux server created")
 	return server, nil
 }

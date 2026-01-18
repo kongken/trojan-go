@@ -6,12 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"google.golang.org/grpc"
 
 	"github.com/p4gefau1t/trojan-go/api/service"
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/option"
 )
 
@@ -139,7 +139,7 @@ func (o *apiController) Handle() error {
 	}
 	conn, err := grpc.Dial(*o.address, grpc.WithInsecure())
 	if err != nil {
-		log.Error(err)
+		slog.Error("failed to dial api service", "address", *o.address, "error", err)
 		return nil
 	}
 	defer conn.Close()
@@ -148,20 +148,20 @@ func (o *apiController) Handle() error {
 	case "list":
 		err := o.listUsers(apiClient)
 		if err != nil {
-			log.Error(err)
+			slog.Error("api list failed", "error", err)
 		}
 	case "get":
 		err := o.getUsers(apiClient)
 		if err != nil {
-			log.Error(err)
+			slog.Error("api get failed", "error", err)
 		}
 	case "set":
 		err := o.setUsers(apiClient)
 		if err != nil {
-			log.Error(err)
+			slog.Error("api set failed", "error", err)
 		}
 	default:
-		log.Error("unknown command " + *o.cmd)
+		slog.Error("unknown api command", "command", *o.cmd)
 	}
 	return nil
 }

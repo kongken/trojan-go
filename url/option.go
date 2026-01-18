@@ -3,12 +3,13 @@ package url
 import (
 	"encoding/json"
 	"flag"
+	"log/slog"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/log"
 	"github.com/p4gefau1t/trojan-go/option"
 	"github.com/p4gefau1t/trojan-go/proxy"
 )
@@ -70,7 +71,8 @@ func (u *url) Handle() error {
 	}
 	info, err := NewShareInfoFromURL(*u.url)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to parse share URL", "error", err)
+		os.Exit(1)
 	}
 	wsEnabled := false
 	if info.Type == ShareInfoTypeWebSocket {
@@ -83,7 +85,8 @@ func (u *url) Handle() error {
 		ssEnabled = true
 		ssConfig := strings.Split(info.Encryption[3:], ":")
 		if len(ssConfig) != 2 {
-			log.Fatalf("invalid shadowsocks config: %s", info.Encryption)
+			slog.Error("invalid shadowsocks config", "encryption", info.Encryption)
+			os.Exit(1)
 		}
 		ssMethod = ssConfig[0]
 		ssPassword = ssConfig[1]
@@ -102,7 +105,8 @@ func (u *url) Handle() error {
 		val := ""
 		l := strings.Split(o, "=")
 		if len(l) != 2 {
-			log.Fatal("option format error, no \"key=value\" pair found:", o)
+			slog.Error("option format error; expected key=value", "option", o)
+			os.Exit(1)
 		}
 		key = l[0]
 		val = l[1]
@@ -110,33 +114,39 @@ func (u *url) Handle() error {
 		case "mux":
 			muxEnabled, err = strconv.ParseBool(val)
 			if err != nil {
-				log.Fatal(err)
+				slog.Error("invalid mux option", "value", val, "error", err)
+				os.Exit(1)
 			}
 		case "listen":
 			h, p, err := net.SplitHostPort(val)
 			if err != nil {
-				log.Fatal(err)
+				slog.Error("invalid listen address", "value", val, "error", err)
+				os.Exit(1)
 			}
 			listenHost = h
 			lp, err := strconv.Atoi(p)
 			if err != nil {
-				log.Fatal(err)
+				slog.Error("invalid listen port", "port", p, "error", err)
+				os.Exit(1)
 			}
 			listenPort = lp
 		case "api":
 			apiEnabled = true
 			h, p, err := net.SplitHostPort(val)
 			if err != nil {
-				log.Fatal(err)
+				slog.Error("invalid api address", "value", val, "error", err)
+				os.Exit(1)
 			}
 			apiHost = h
 			lp, err := strconv.Atoi(p)
 			if err != nil {
-				log.Fatal(err)
+				slog.Error("invalid api port", "port", p, "error", err)
+				os.Exit(1)
 			}
 			apiPort = lp
 		default:
-			log.Fatal("invalid option", o)
+			slog.Error("invalid url option", "option", o)
+			os.Exit(1)
 		}
 	}
 	config := UrlConfig{
@@ -170,12 +180,14 @@ func (u *url) Handle() error {
 	}
 	data, err := json.Marshal(&config)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to marshal url config", "error", err)
+		os.Exit(1)
 	}
-	log.Debug(string(data))
+	slog.Debug("generated url config", "config", string(data))
 	client, err := proxy.NewProxyFromConfigData(data, true)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to build proxy from url config", "error", err)
+		os.Exit(1)
 	}
 	return client.Run()
 }
