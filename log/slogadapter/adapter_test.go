@@ -2270,7 +2270,7 @@ func TestFormatConsistency(t *testing.T) {
 				adapterWithGroup := adapter.WithGroup(groupName)
 
 				// Test that derived adapters maintain format consistency
-				adapters := []*SlogAdapter{adapter, adapterWithAttrs, adapterWithGroup}
+				adapters := []log.Logger{adapter, adapterWithAttrs, adapterWithGroup}
 
 				for _, testAdapter := range adapters {
 					buf.Reset()
@@ -2940,7 +2940,7 @@ func TestRuntimeLevelChanges(t *testing.T) {
 			adapter.SetLogLevel(log.ErrorLevel)
 
 			// All adapters should respect the level change
-			adapters := []*SlogAdapter{adapter, adapterWithAttrs, adapterWithGroup}
+			adapters := []log.Logger{adapter, adapterWithAttrs, adapterWithGroup}
 
 			for _, testAdapter := range adapters {
 				// Info should be blocked

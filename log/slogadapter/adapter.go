@@ -752,7 +752,7 @@ func (s *SlogAdapter) FatalCtx(ctx context.Context, msg string, attrs ...slog.At
 }
 
 // WithAttrs returns a new SlogAdapter with the given attributes added to all log records
-func (s *SlogAdapter) WithAttrs(attrs ...slog.Attr) *SlogAdapter {
+func (s *SlogAdapter) WithAttrs(attrs ...slog.Attr) log.Logger {
 	s.mu.RLock()
 	newHandler := s.handler.WithAttrs(attrs)
 	s.mu.RUnlock()
@@ -777,7 +777,7 @@ func (s *SlogAdapter) WithAttrs(attrs ...slog.Attr) *SlogAdapter {
 }
 
 // WithGroup returns a new SlogAdapter with the given group name added to all log records
-func (s *SlogAdapter) WithGroup(name string) *SlogAdapter {
+func (s *SlogAdapter) WithGroup(name string) log.Logger {
 	s.mu.RLock()
 	newHandler := s.handler.WithGroup(name)
 	s.mu.RUnlock()

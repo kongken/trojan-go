@@ -23,3 +23,4 @@ build/
 *.dat
 trojan-go
 .kiro/
+plans/
