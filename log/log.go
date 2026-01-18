@@ -1,7 +1,9 @@
 package log
 
 import (
+	"context"
 	"io"
+	"log/slog"
 	"os"
 )
 
@@ -33,6 +35,26 @@ type Logger interface {
 	Tracef(format string, v ...interface{})
 	SetLogLevel(level LogLevel)
 	SetOutput(io.Writer)
+
+	// Structured logging methods
+	InfoWith(msg string, attrs ...slog.Attr)
+	ErrorWith(msg string, attrs ...slog.Attr)
+	WarnWith(msg string, attrs ...slog.Attr)
+	DebugWith(msg string, attrs ...slog.Attr)
+	TraceWith(msg string, attrs ...slog.Attr)
+	FatalWith(msg string, attrs ...slog.Attr)
+
+	// Context-aware logging methods
+	InfoCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+	ErrorCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+	WarnCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+	DebugCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+	TraceCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+	FatalCtx(ctx context.Context, msg string, attrs ...slog.Attr)
+
+	// Attribute grouping methods
+	WithAttrs(attrs ...slog.Attr) Logger
+	WithGroup(name string) Logger
 }
 
 var logger Logger = &EmptyLogger{}
@@ -66,6 +88,37 @@ func (l *EmptyLogger) Trace(v ...interface{}) {}
 func (l *EmptyLogger) Tracef(format string, v ...interface{}) {}
 
 func (l *EmptyLogger) SetOutput(w io.Writer) {}
+
+// Structured logging methods
+func (l *EmptyLogger) InfoWith(msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) ErrorWith(msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) WarnWith(msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) DebugWith(msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) TraceWith(msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) FatalWith(msg string, attrs ...slog.Attr) { os.Exit(1) }
+
+// Context-aware logging methods
+func (l *EmptyLogger) InfoCtx(ctx context.Context, msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) ErrorCtx(ctx context.Context, msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) WarnCtx(ctx context.Context, msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) DebugCtx(ctx context.Context, msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) TraceCtx(ctx context.Context, msg string, attrs ...slog.Attr) {}
+
+func (l *EmptyLogger) FatalCtx(ctx context.Context, msg string, attrs ...slog.Attr) { os.Exit(1) }
+
+// Attribute grouping methods
+func (l *EmptyLogger) WithAttrs(attrs ...slog.Attr) Logger { return l }
+
+func (l *EmptyLogger) WithGroup(name string) Logger { return l }
 
 func Error(v ...interface{}) {
 	logger.Error(v...)
@@ -125,4 +178,63 @@ func SetOutput(w io.Writer) {
 
 func RegisterLogger(l Logger) {
 	logger = l
+}
+
+// Structured logging global functions
+func InfoWith(msg string, attrs ...slog.Attr) {
+	logger.InfoWith(msg, attrs...)
+}
+
+func ErrorWith(msg string, attrs ...slog.Attr) {
+	logger.ErrorWith(msg, attrs...)
+}
+
+func WarnWith(msg string, attrs ...slog.Attr) {
+	logger.WarnWith(msg, attrs...)
+}
+
+func DebugWith(msg string, attrs ...slog.Attr) {
+	logger.DebugWith(msg, attrs...)
+}
+
+func TraceWith(msg string, attrs ...slog.Attr) {
+	logger.TraceWith(msg, attrs...)
+}
+
+func FatalWith(msg string, attrs ...slog.Attr) {
+	logger.FatalWith(msg, attrs...)
+}
+
+// Context-aware logging global functions
+func InfoCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.InfoCtx(ctx, msg, attrs...)
+}
+
+func ErrorCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.ErrorCtx(ctx, msg, attrs...)
+}
+
+func WarnCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.WarnCtx(ctx, msg, attrs...)
+}
+
+func DebugCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.DebugCtx(ctx, msg, attrs...)
+}
+
+func TraceCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.TraceCtx(ctx, msg, attrs...)
+}
+
+func FatalCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	logger.FatalCtx(ctx, msg, attrs...)
+}
+
+// Attribute grouping global functions
+func WithAttrs(attrs ...slog.Attr) Logger {
+	return logger.WithAttrs(attrs...)
+}
+
+func WithGroup(name string) Logger {
+	return logger.WithGroup(name)
 }

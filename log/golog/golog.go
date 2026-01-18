@@ -4,8 +4,10 @@
 package golog
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -379,4 +381,89 @@ func (l *Logger) Tracef(format string, v ...interface{}) {
 	if atomic.LoadInt32(&l.logLevel) == 0 {
 		l.Output(1, TracePrefix, fmt.Sprintf(format, v...))
 	}
+}
+
+// Structured logging methods - golog implementation that ignores attributes
+func (l *Logger) InfoWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 1 {
+		l.Output(1, InfoPrefix, msg)
+	}
+}
+
+func (l *Logger) ErrorWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 3 {
+		l.Output(1, ErrorPrefix, msg)
+	}
+}
+
+func (l *Logger) WarnWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 2 {
+		l.Output(1, WarnPrefix, msg)
+	}
+}
+
+func (l *Logger) DebugWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) == 0 {
+		l.Output(1, DebugPrefix, msg)
+	}
+}
+
+func (l *Logger) TraceWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) == 0 {
+		l.Output(1, TracePrefix, msg)
+	}
+}
+
+func (l *Logger) FatalWith(msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 4 {
+		l.Output(1, FatalPrefix, msg)
+	}
+	os.Exit(1)
+}
+
+// Context-aware logging methods - golog implementation that ignores context and attributes
+func (l *Logger) InfoCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 1 {
+		l.Output(1, InfoPrefix, msg)
+	}
+}
+
+func (l *Logger) ErrorCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 3 {
+		l.Output(1, ErrorPrefix, msg)
+	}
+}
+
+func (l *Logger) WarnCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 2 {
+		l.Output(1, WarnPrefix, msg)
+	}
+}
+
+func (l *Logger) DebugCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) == 0 {
+		l.Output(1, DebugPrefix, msg)
+	}
+}
+
+func (l *Logger) TraceCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) == 0 {
+		l.Output(1, TracePrefix, msg)
+	}
+}
+
+func (l *Logger) FatalCtx(ctx context.Context, msg string, attrs ...slog.Attr) {
+	if atomic.LoadInt32(&l.logLevel) <= 4 {
+		l.Output(1, FatalPrefix, msg)
+	}
+	os.Exit(1)
+}
+
+// Attribute grouping methods - golog implementation that returns self
+func (l *Logger) WithAttrs(attrs ...slog.Attr) log.Logger {
+	return l
+}
+
+func (l *Logger) WithGroup(name string) log.Logger {
+	return l
 }
