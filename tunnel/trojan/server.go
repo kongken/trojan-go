@@ -2,7 +2,6 @@ package trojan
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"

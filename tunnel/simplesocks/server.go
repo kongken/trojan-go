@@ -2,7 +2,6 @@ package simplesocks
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/p4gefau1t/trojan-go/common"
