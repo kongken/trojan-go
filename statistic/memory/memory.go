@@ -11,6 +11,7 @@ import (
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
+	"github.com/p4gefau1t/trojan-go/metrics/prometheus"
 	"github.com/p4gefau1t/trojan-go/statistic"
 )
 
@@ -58,7 +59,10 @@ func (u *User) AddIP(ip string) bool {
 		return false
 	}
 	u.ipTable.Store(ip, true)
-	atomic.AddInt32(&u.ipNum, 1)
+	newCount := atomic.AddInt32(&u.ipNum, 1)
+
+	// Update IP metrics
+	prometheus.SetUserActiveIPs(u.hash, int(newCount))
 	return true
 }
 
@@ -71,7 +75,10 @@ func (u *User) DelIP(ip string) bool {
 		return false
 	}
 	u.ipTable.Delete(ip)
-	atomic.AddInt32(&u.ipNum, -1)
+	newCount := atomic.AddInt32(&u.ipNum, -1)
+
+	// Update IP metrics
+	prometheus.SetUserActiveIPs(u.hash, int(newCount))
 	return true
 }
 
@@ -98,6 +105,9 @@ func (u *User) AddTraffic(sent, recv int) {
 	}
 	atomic.AddUint64(&u.sent, uint64(sent))
 	atomic.AddUint64(&u.recv, uint64(recv))
+
+	// Record metrics
+	prometheus.RecordTraffic(u.hash, sent, recv)
 }
 
 func (u *User) SetSpeedLimit(send, recv int) {
@@ -158,10 +168,15 @@ func (u *User) speedUpdater() {
 			return
 		case <-ticker.C:
 			sent, recv := u.GetTraffic()
-			atomic.StoreUint64(&u.sendSpeed, sent-u.lastSent)
-			atomic.StoreUint64(&u.recvSpeed, recv-u.lastRecv)
+			sendSpeed := sent - u.lastSent
+			recvSpeed := recv - u.lastRecv
+			atomic.StoreUint64(&u.sendSpeed, sendSpeed)
+			atomic.StoreUint64(&u.recvSpeed, recvSpeed)
 			atomic.StoreUint64(&u.lastSent, sent)
 			atomic.StoreUint64(&u.lastRecv, recv)
+
+			// Update speed metrics
+			prometheus.SetUserSpeed(u.hash, sendSpeed, recvSpeed)
 		}
 	}
 }
@@ -194,6 +209,9 @@ func (a *Authenticator) AddUser(hash string) error {
 	}
 	go meter.speedUpdater()
 	a.users.Store(hash, meter)
+
+	// Update user count metric
+	prometheus.SetUserCount(len(a.ListUsers()))
 	return nil
 }
 
@@ -204,6 +222,10 @@ func (a *Authenticator) DelUser(hash string) error {
 	}
 	meter.(*User).Close()
 	a.users.Delete(hash)
+
+	// Cleanup user metrics and update count
+	prometheus.CleanupUserMetrics(hash)
+	prometheus.SetUserCount(len(a.ListUsers()))
 	return nil
 }
 
@@ -229,6 +251,10 @@ func NewAuthenticator(ctx context.Context) (statistic.Authenticator, error) {
 		hash := common.SHA224String(password)
 		u.AddUser(hash)
 	}
+
+	// Initialize metrics
+	prometheus.SetUserCount(len(u.ListUsers()))
+
 	slog.Debug("memory authenticator created")
 	return u, nil
 }

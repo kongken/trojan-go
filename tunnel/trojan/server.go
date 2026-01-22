@@ -10,6 +10,7 @@ import (
 	"github.com/p4gefau1t/trojan-go/api"
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
+	"github.com/p4gefau1t/trojan-go/metrics/prometheus"
 	"github.com/p4gefau1t/trojan-go/redirector"
 	"github.com/p4gefau1t/trojan-go/statistic"
 	"github.com/p4gefau1t/trojan-go/statistic/memory"
@@ -63,6 +64,10 @@ func (c *InboundConn) Close() error {
 		"recv", common.HumanFriendlyTraffic(atomic.LoadUint64(&c.recv)),
 	)
 	c.user.DelIP(c.ip)
+
+	// Record connection close
+	prometheus.RecordConnectionClose(c.hash)
+
 	return c.Conn.Close()
 }
 
@@ -156,6 +161,10 @@ func (s *Server) acceptLoop() {
 					"remote", rewindConn.RemoteAddr().String(),
 					"error", err,
 				)
+				// Record failed authentication
+				prometheus.RecordAuthAttempt(false)
+				prometheus.RecordRedirectedConnection()
+
 				s.redir.Redirect(&redirector.Redirection{
 					RedirectTo:  s.redirAddr,
 					InboundConn: rewindConn,
@@ -163,7 +172,14 @@ func (s *Server) acceptLoop() {
 				return
 			}
 
+			// Record successful authentication
+			prometheus.RecordAuthAttempt(true)
+
 			rewindConn.StopBuffering()
+
+			// Record connection open
+			prometheus.RecordConnectionOpen(inboundConn.hash)
+
 			switch inboundConn.metadata.Command {
 			case Connect:
 				if inboundConn.metadata.DomainName == "MUX_CONN" {
