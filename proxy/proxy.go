@@ -11,6 +11,7 @@ import (
 
 	"github.com/p4gefau1t/trojan-go/common"
 	"github.com/p4gefau1t/trojan-go/config"
+	"github.com/p4gefau1t/trojan-go/metrics/prometheus"
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
@@ -64,6 +65,7 @@ func (p *Proxy) relayConnLoop() {
 					outbound, err := p.sink.DialConn(inbound.Metadata().Address, nil)
 					if err != nil {
 						slog.Error("proxy failed to dial connection", "error", err)
+						prometheus.RecordRelayConnectionError()
 						return
 					}
 					defer outbound.Close()
@@ -78,6 +80,7 @@ func (p *Proxy) relayConnLoop() {
 					case err = <-errChan:
 						if err != nil {
 							slog.Error("connection relay error", "error", err)
+							prometheus.RecordRelayConnectionError()
 						}
 					case <-p.ctx.Done():
 						slog.Debug("shutting down connection relay")
@@ -110,6 +113,7 @@ func (p *Proxy) relayPacketLoop() {
 					outbound, err := p.sink.DialPacket(nil)
 					if err != nil {
 						slog.Error("proxy failed to dial packet", "error", err)
+						prometheus.RecordRelayPacketError()
 						return
 					}
 					defer outbound.Close()
@@ -139,6 +143,7 @@ func (p *Proxy) relayPacketLoop() {
 					case err = <-errChan:
 						if err != nil {
 							slog.Error("packet relay error", "error", err)
+							prometheus.RecordRelayPacketError()
 						}
 					case <-p.ctx.Done():
 						slog.Debug("shutting down packet relay")
@@ -201,6 +206,11 @@ func NewProxyFromConfigData(data []byte, isJSON bool) (*Proxy, error) {
 		Level: logLevelFromConfig(cfg.LogLevel),
 	})
 	slog.SetDefault(slog.New(handler))
+
+	// Start Prometheus metrics server if enabled
+	if err := prometheus.RunMetricsServer(ctx); err != nil {
+		slog.Warn("failed to start prometheus metrics server", "error", err)
+	}
 
 	return create(ctx)
 }

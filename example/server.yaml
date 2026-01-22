@@ -15,3 +15,8 @@ router:
     - 'geoip:private'
   geoip: /usr/share/trojan-go/geoip.dat
   geosite: /usr/share/trojan-go/geosite.dat
+metrics:
+  enabled: true
+  host: 127.0.0.1
+  port: 9100
+  path: /metrics
